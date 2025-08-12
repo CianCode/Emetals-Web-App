@@ -31,7 +31,12 @@ export const auth = betterAuth({
             console.log(`Code: ${otp}`);
             console.log("=====================================");
           } else {
-            // Send the OTP for password reset
+            console.log("=====================================");
+            console.log(`📧 Email OTP Reset Password`);
+            console.log(`Type: ${type}`);
+            console.log(`To: ${email}`);
+            console.log(`Code: ${otp}`);
+            console.log("=====================================");
           }
         } else {
           // Production email sending logic

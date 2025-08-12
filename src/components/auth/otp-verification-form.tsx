@@ -1,9 +1,8 @@
-// src/components/auth/otp-verification-form.tsx
 import React, { useEffect, useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { ArrowLeft, Mail, RefreshCw } from "lucide-react";
+import { ArrowLeft, KeyRound, Mail, RefreshCw } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -18,9 +17,16 @@ import { type OtpFormData, otpSchema } from "@/lib/validation/register-schema";
 
 import { FormErrorMessage } from "./form-error-message";
 
+/**
+ * OTP verification types
+ */
+export type OtpVerificationType = "email-verification" | "password-reset";
+
 interface OtpVerificationFormProps {
   /** Email address where OTP was sent */
   email: string;
+  /** Type of OTP verification */
+  type: OtpVerificationType;
   /** Callback when back button is clicked */
   onBack: () => void;
   /** Callback when OTP verification is successful */
@@ -34,9 +40,11 @@ interface OtpVerificationFormProps {
 /**
  * OTP verification form component
  * Handles 6-digit OTP input with resend functionality and timer
+ * Supports both email verification and password reset flows
  */
 export function OtpVerificationForm({
   email,
+  type,
   onBack,
   onVerify,
   onResendOtp,
@@ -88,7 +96,7 @@ export function OtpVerificationForm({
     } catch {
       setError("otp", {
         type: "manual",
-        message: "Invalid OTP. Please try again.",
+        message: "Invalid code. Please check and try again.",
       });
     }
   };
@@ -106,7 +114,7 @@ export function OtpVerificationForm({
     } catch {
       setError("otp", {
         type: "manual",
-        message: "Failed to resend OTP. Please try again.",
+        message: "Failed to resend code. Please try again.",
       });
     } finally {
       setIsResending(false);
@@ -122,6 +130,34 @@ export function OtpVerificationForm({
     return `${username[0]}${"*".repeat(username.length - 2)}${username[username.length - 1]}@${domain}`;
   };
 
+  /**
+   * Get content based on verification type
+   */
+  const getContent = () => {
+    if (type === "email-verification") {
+      return {
+        icon: Mail,
+        title: "Verify Your Email",
+        description: `We've sent a 6-digit verification code to`,
+        buttonText: "Verify Email",
+        verifyingText: "Verifying...",
+        backButtonText: "Back to Registration",
+      };
+    } else {
+      return {
+        icon: KeyRound,
+        title: "Enter Verification Code",
+        description: `We've sent a 6-digit code to`,
+        buttonText: "Verify Code",
+        verifyingText: "Verifying...",
+        backButtonText: "Back to Email",
+      };
+    }
+  };
+
+  const content = getContent();
+  const Icon = content.icon;
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 100 }}
@@ -133,13 +169,13 @@ export function OtpVerificationForm({
       {/* Header */}
       <div className="space-y-2 text-center">
         <div className="bg-primary/10 mx-auto flex h-12 w-12 items-center justify-center rounded-full">
-          <Mail className="text-primary h-6 w-6" />
+          <Icon className="text-primary h-6 w-6" />
         </div>
         <h2 className="text-2xl font-semibold tracking-tight">
-          Verify Your Email
+          {content.title}
         </h2>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          We&apos;ve sent a 6-digit verification code to{" "}
+          {content.description}{" "}
           <span className="text-foreground font-medium">
             {formatEmail(email)}
           </span>
@@ -182,6 +218,13 @@ export function OtpVerificationForm({
               </InputOTPGroup>
             </InputOTP>
           </div>
+
+          {/* Helper text for password reset */}
+          {type === "password-reset" && (
+            <p className="text-muted-foreground text-center text-xs">
+              Check your email for the verification code
+            </p>
+          )}
         </div>
 
         {/* Error message above verify button */}
@@ -199,10 +242,10 @@ export function OtpVerificationForm({
           {isLoading ? (
             <>
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Verifying...
+              {content.verifyingText}
             </>
           ) : (
-            "Verify Email"
+            content.buttonText
           )}
         </Button>
       </form>
@@ -248,7 +291,7 @@ export function OtpVerificationForm({
           className="h-10 w-full"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Registration
+          {content.backButtonText}
         </Button>
       </div>
     </motion.div>

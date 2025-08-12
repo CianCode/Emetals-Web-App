@@ -1,29 +1,25 @@
 import type { Metadata } from "next";
 
-import { LoginForm } from "@/components/auth/login-form";
+import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 
 export const metadata: Metadata = {
-  title: "Login",
+  title: "Reset Password",
   description:
-    "Sign in to your Emetals account to access live precious metals pricing and trading for gold, silver, platinum, and palladium",
+    "Reset your Emetals account password. We'll send you a verification code to reset your password securely.",
   keywords: [
-    "login",
-    "signin",
+    "forgot password",
+    "reset password",
     "emetals",
-    "precious metals",
-    "gold",
-    "silver",
-    "platinum",
-    "palladium",
-    "trading",
+    "account recovery",
+    "password recovery",
   ],
 };
 
 /**
- * Login page component
- * Displays the complete login flow with success state
+ * Standalone forgot password page
+ * Can be accessed directly via /forgot-password URL
  */
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   return (
     <div className="from-background via-muted/20 to-background flex min-h-screen items-center justify-center bg-gradient-to-br p-4">
       {/* Background decoration */}
@@ -34,7 +30,7 @@ export default function LoginPage() {
 
       {/* Main content */}
       <div className="relative z-10 w-full max-w-md">
-        <LoginForm />
+        <ForgotPasswordForm />
       </div>
     </div>
   );

@@ -299,6 +299,7 @@ export function RegisterForm() {
                 >
                   <OtpVerificationForm
                     email={registrationState.email}
+                    type="email-verification"
                     onBack={handleBackToForm}
                     onVerify={handleOtpVerification}
                     onResendOtp={handleResendOtp}
