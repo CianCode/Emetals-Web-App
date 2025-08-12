@@ -97,17 +97,10 @@ export default function PasswordStrengthBar({
   className?: string;
   showHint?: boolean;
 }) {
-  const { score, label, hint, color, width } = analyzePassword(password);
+  const { label, hint, color, width } = analyzePassword(password);
 
   return (
     <div className={clsx("w-full", className)}>
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-medium text-slate-700">
-          Password strength
-        </div>
-        <div className="text-xs text-slate-500">{label}</div>
-      </div>
-
       <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
         {/* Background track */}
         <motion.div
