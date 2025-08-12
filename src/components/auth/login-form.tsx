@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { ForgotPasswordForm } from "./forgot-password-form";
 import { FormErrorMessage } from "./form-error-message";
 import { GlobalAlert } from "./global-alert";
+import { LoginSuccess } from "./login-success";
 
 /**
  * Login form validation schema
@@ -40,6 +41,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 enum LoginView {
   LOGIN = "login",
   FORGOT_PASSWORD = "forgot_password",
+  SUCCESS = "success",
 }
 
 /**
@@ -53,6 +55,7 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [globalSuccess, setGlobalSuccess] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>("");
 
   // React Hook Form setup
   const {
@@ -92,12 +95,19 @@ export function LoginForm() {
         throw new Error(response.error.message || "Invalid credentials");
       }
 
-      // Success - redirect to dashboard
-      setGlobalSuccess("Login successful! Redirecting...");
+      // Get user data from response if available
+      if (response.data?.user) {
+        setUserName(response.data.user.name || "");
+      }
 
+      // Success - show success state
+      setCurrentView(LoginView.SUCCESS);
+      setIsLoading(false);
+
+      // Auto-redirect after 3 seconds
       setTimeout(() => {
         router.push("/dashboard");
-      }, 1000);
+      }, 3000);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "An unexpected error occurred";
@@ -142,6 +152,13 @@ export function LoginForm() {
     }
   };
 
+  /**
+   * Handle redirect from success state
+   */
+  const handleRedirect = () => {
+    router.push("/dashboard");
+  };
+
   return (
     <div className="mx-auto w-full max-w-md">
       <Card className="bg-card/50 border-0 shadow-lg backdrop-blur-sm">
@@ -156,6 +173,14 @@ export function LoginForm() {
             <p className="text-muted-foreground text-center text-sm">
               Sign in to your Emetals account
             </p>
+          </CardHeader>
+        )}
+
+        {currentView === LoginView.SUCCESS && (
+          <CardHeader className="space-y-1 pb-6">
+            <CardTitle className="text-center text-2xl font-semibold tracking-tight">
+              Login Successful
+            </CardTitle>
           </CardHeader>
         )}
 
@@ -324,7 +349,7 @@ export function LoginForm() {
                     </p>
                   </div>
                 </motion.div>
-              ) : (
+              ) : currentView === LoginView.FORGOT_PASSWORD ? (
                 <motion.div
                   key="forgot-password"
                   initial={{ opacity: 0, x: 100 }}
@@ -335,6 +360,18 @@ export function LoginForm() {
                   <ForgotPasswordForm
                     onBackToLogin={handleBackToLogin}
                     isEmbedded={true}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="login-success"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                >
+                  <LoginSuccess
+                    userName={userName}
+                    onRedirect={handleRedirect}
                   />
                 </motion.div>
               )}

@@ -15,12 +15,20 @@ import {
   type ForgotPasswordFormData,
   forgotPasswordSchema,
 } from "@/lib/validation/forgot-password-schema";
-import { type PasswordResetState, PasswordResetStep } from "@/types/auth";
 
+import { AuthSuccess } from "./auth-success";
 import { ForgotPasswordFields } from "./forgot-password-fields";
 import { GlobalAlert } from "./global-alert";
 import { OtpVerificationForm } from "./otp-verification-form";
 import { ResetPasswordForm } from "./reset-password-form";
+
+// Extend PasswordResetStep to include SUCCESS
+enum ExtendedPasswordResetStep {
+  EMAIL = "email",
+  OTP_VERIFICATION = "otp_verification",
+  RESET_PASSWORD = "reset_password",
+  SUCCESS = "success",
+}
 
 interface ForgotPasswordFormProps {
   /** Callback to return to login form */
@@ -39,9 +47,16 @@ export function ForgotPasswordForm({
 }: ForgotPasswordFormProps) {
   const router = useRouter();
 
-  // Password reset state management
-  const [resetState, setResetState] = useState<PasswordResetState>({
-    step: PasswordResetStep.EMAIL,
+  // Password reset state management with extended step
+  const [resetState, setResetState] = useState<{
+    step: ExtendedPasswordResetStep;
+    email: string;
+    otp: string;
+    isLoading: boolean;
+    error: string | null;
+    success: string | null;
+  }>({
+    step: ExtendedPasswordResetStep.EMAIL,
     email: "",
     otp: "", // Store OTP for final reset
     isLoading: false,
@@ -94,7 +109,7 @@ export function ForgotPasswordForm({
       // Success - move to OTP verification step
       setResetState((prev) => ({
         ...prev,
-        step: PasswordResetStep.OTP_VERIFICATION,
+        step: ExtendedPasswordResetStep.OTP_VERIFICATION,
         email: data.email,
         isLoading: false,
         success: "Verification code sent! Check your email.",
@@ -133,10 +148,9 @@ export function ForgotPasswordForm({
       setResetState((prev) => ({ ...prev, isLoading: true }));
 
       // Store OTP for the final reset step
-      // We don't verify it separately, just store it for the reset
       setResetState((prev) => ({
         ...prev,
-        step: PasswordResetStep.RESET_PASSWORD,
+        step: ExtendedPasswordResetStep.RESET_PASSWORD,
         otp: otp, // Store the OTP
         isLoading: false,
         success: "Code verified! Now create your new password.",
@@ -179,7 +193,7 @@ export function ForgotPasswordForm({
         ) {
           setResetState((prev) => ({
             ...prev,
-            step: PasswordResetStep.OTP_VERIFICATION,
+            step: ExtendedPasswordResetStep.OTP_VERIFICATION,
             isLoading: false,
             error: "Invalid verification code. Please try again.",
             success: null,
@@ -190,22 +204,23 @@ export function ForgotPasswordForm({
         throw new Error(response.error.message || "Failed to reset password");
       }
 
-      // Success - show success message and redirect
+      // Success - show success state
       setResetState((prev) => ({
         ...prev,
+        step: ExtendedPasswordResetStep.SUCCESS,
         isLoading: false,
-        success: "Password reset successful! Redirecting to login...",
+        success: "Password reset successful!",
         error: null,
       }));
 
-      // Wait briefly to show success message, then redirect
+      // Auto-redirect after 3 seconds
       setTimeout(() => {
         if (onBackToLogin) {
           onBackToLogin();
         } else {
           router.push("/login");
         }
-      }, 2000);
+      }, 3000);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to reset password";
@@ -258,21 +273,32 @@ export function ForgotPasswordForm({
    * Handle back navigation
    */
   const handleBack = () => {
-    if (resetState.step === PasswordResetStep.OTP_VERIFICATION) {
+    if (resetState.step === ExtendedPasswordResetStep.OTP_VERIFICATION) {
       setResetState((prev) => ({
         ...prev,
-        step: PasswordResetStep.EMAIL,
+        step: ExtendedPasswordResetStep.EMAIL,
         error: null,
         success: null,
       }));
-    } else if (resetState.step === PasswordResetStep.RESET_PASSWORD) {
+    } else if (resetState.step === ExtendedPasswordResetStep.RESET_PASSWORD) {
       setResetState((prev) => ({
         ...prev,
-        step: PasswordResetStep.OTP_VERIFICATION,
+        step: ExtendedPasswordResetStep.OTP_VERIFICATION,
         error: null,
         success: null,
       }));
     } else if (onBackToLogin) {
+      onBackToLogin();
+    } else {
+      router.push("/login");
+    }
+  };
+
+  /**
+   * Handle redirect from success state
+   */
+  const handleRedirect = () => {
+    if (onBackToLogin) {
       onBackToLogin();
     } else {
       router.push("/login");
@@ -288,7 +314,7 @@ export function ForgotPasswordForm({
   return (
     <div className={isEmbedded ? "" : "mx-auto w-full max-w-md"}>
       <ContentWrapper {...contentWrapperProps}>
-        {!isEmbedded && resetState.step === PasswordResetStep.EMAIL && (
+        {!isEmbedded && resetState.step === ExtendedPasswordResetStep.EMAIL && (
           <CardHeader className="space-y-1 pb-6">
             <div className="bg-primary/10 mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full">
               <KeyRound className="text-primary h-6 w-6" />
@@ -302,11 +328,20 @@ export function ForgotPasswordForm({
           </CardHeader>
         )}
 
+        {!isEmbedded &&
+          resetState.step === ExtendedPasswordResetStep.SUCCESS && (
+            <CardHeader className="space-y-1 pb-6">
+              <CardTitle className="text-center text-2xl font-semibold tracking-tight">
+                Password Reset Complete
+              </CardTitle>
+            </CardHeader>
+          )}
+
         <CardContent className={isEmbedded ? "p-0" : ""}>
           {/* Multi-step form content */}
           <div className="relative overflow-hidden">
             <AnimatePresence mode="wait">
-              {resetState.step === PasswordResetStep.EMAIL ? (
+              {resetState.step === ExtendedPasswordResetStep.EMAIL ? (
                 <motion.div
                   key="email-form"
                   initial={{
@@ -393,7 +428,8 @@ export function ForgotPasswordForm({
                     </Button>
                   </form>
                 </motion.div>
-              ) : resetState.step === PasswordResetStep.OTP_VERIFICATION ? (
+              ) : resetState.step ===
+                ExtendedPasswordResetStep.OTP_VERIFICATION ? (
                 <motion.div
                   key="otp-verification"
                   initial={{ opacity: 0, x: 100 }}
@@ -410,7 +446,8 @@ export function ForgotPasswordForm({
                     isLoading={resetState.isLoading}
                   />
                 </motion.div>
-              ) : (
+              ) : resetState.step ===
+                ExtendedPasswordResetStep.RESET_PASSWORD ? (
                 <motion.div
                   key="reset-password"
                   initial={{ opacity: 0, x: 100 }}
@@ -447,6 +484,19 @@ export function ForgotPasswordForm({
                       />
                     </div>
                   )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="password-reset-success"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                >
+                  <AuthSuccess
+                    type="password-reset"
+                    userEmail={resetState.email}
+                    onRedirect={handleRedirect}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>

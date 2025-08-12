@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,27 +16,42 @@ import {
   type RegisterFormData,
   registerSchema,
 } from "@/lib/validation/register-schema";
-import { type RegistrationState, RegistrationStep } from "@/types/auth";
 
+import { AuthSuccess } from "./auth-success";
 import { GlobalAlert } from "./global-alert";
 import { OtpVerificationForm } from "./otp-verification-form";
 import { RegisterFields } from "./register-fields";
+
+// Update the RegistrationStep enum to include SUCCESS
+enum ExtendedRegistrationStep {
+  FORM = "form",
+  OTP_VERIFICATION = "otp_verification",
+  SUCCESS = "success",
+}
 
 /**
  * Main registration form component with multi-step flow
  * Handles user registration and email verification via OTP
  */
 export function RegisterForm() {
-  // Registration state management
-  const [registrationState, setRegistrationState] = useState<RegistrationState>(
-    {
-      step: RegistrationStep.FORM,
-      email: "",
-      isLoading: false,
-      error: null,
-      success: null,
-    },
-  );
+  const router = useRouter();
+
+  // Registration state management with extended step
+  const [registrationState, setRegistrationState] = useState<{
+    step: ExtendedRegistrationStep;
+    email: string;
+    name: string;
+    isLoading: boolean;
+    error: string | null;
+    success: string | null;
+  }>({
+    step: ExtendedRegistrationStep.FORM,
+    email: "",
+    name: "",
+    isLoading: false,
+    error: null,
+    success: null,
+  });
 
   // React Hook Form setup
   const {
@@ -84,8 +100,9 @@ export function RegisterForm() {
       // Success - move to OTP verification step
       setRegistrationState((prev) => ({
         ...prev,
-        step: RegistrationStep.OTP_VERIFICATION,
+        step: ExtendedRegistrationStep.OTP_VERIFICATION,
         email: data.email,
+        name: data.name,
         isLoading: false,
         success: "Account created successfully! Please verify your email.",
       }));
@@ -125,17 +142,18 @@ export function RegisterForm() {
         throw new Error(response.error.message || "OTP verification failed");
       }
 
-      // Success - registration complete
+      // Success - show success state
       setRegistrationState((prev) => ({
         ...prev,
+        step: ExtendedRegistrationStep.SUCCESS,
         isLoading: false,
         success: "Email verified successfully! Welcome to Emetals.",
       }));
 
-      // Redirect to dashboard after success
+      // Auto-redirect after 3 seconds
       setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 2000);
+        router.push("/dashboard");
+      }, 3000);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "OTP verification failed";
@@ -189,16 +207,23 @@ export function RegisterForm() {
   const handleBackToForm = () => {
     setRegistrationState((prev) => ({
       ...prev,
-      step: RegistrationStep.FORM,
+      step: ExtendedRegistrationStep.FORM,
       error: null,
       success: null,
     }));
   };
 
+  /**
+   * Handle redirect from success state
+   */
+  const handleRedirect = () => {
+    router.push("/dashboard");
+  };
+
   return (
     <div className="mx-auto w-full max-w-md">
       <Card className="bg-card/50 border-0 shadow-lg backdrop-blur-sm">
-        {registrationState.step === RegistrationStep.FORM && (
+        {registrationState.step === ExtendedRegistrationStep.FORM && (
           <CardHeader className="space-y-1 pb-6">
             <div className="bg-primary/10 mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full">
               <UserPlus className="text-primary h-6 w-6" />
@@ -212,11 +237,19 @@ export function RegisterForm() {
           </CardHeader>
         )}
 
+        {registrationState.step === ExtendedRegistrationStep.SUCCESS && (
+          <CardHeader className="space-y-1 pb-6">
+            <CardTitle className="text-center text-2xl font-semibold tracking-tight">
+              Registration Complete
+            </CardTitle>
+          </CardHeader>
+        )}
+
         <CardContent>
           {/* Multi-step form content */}
           <div className="relative overflow-hidden">
             <AnimatePresence mode="wait">
-              {registrationState.step === RegistrationStep.FORM ? (
+              {registrationState.step === ExtendedRegistrationStep.FORM ? (
                 <motion.div
                   key="registration-form"
                   initial={{ opacity: 1, x: 0 }}
@@ -233,13 +266,15 @@ export function RegisterForm() {
                     />
 
                     {/* Global Alert above button */}
-                    <GlobalAlert
-                      type="error"
-                      title="Registration Error"
-                      message={registrationState.error || ""}
-                      isVisible={!!registrationState.error}
-                      onClose={clearAlerts}
-                    />
+                    {registrationState.error && (
+                      <GlobalAlert
+                        type="error"
+                        title="Registration Error"
+                        message={registrationState.error}
+                        isVisible={!!registrationState.error}
+                        onClose={clearAlerts}
+                      />
+                    )}
 
                     {/* Submit Button */}
                     <Button
@@ -289,7 +324,8 @@ export function RegisterForm() {
                     </p>
                   </div>
                 </motion.div>
-              ) : (
+              ) : registrationState.step ===
+                ExtendedRegistrationStep.OTP_VERIFICATION ? (
                 <motion.div
                   key="otp-verification"
                   initial={{ opacity: 0, x: 100 }}
@@ -304,6 +340,20 @@ export function RegisterForm() {
                     onVerify={handleOtpVerification}
                     onResendOtp={handleResendOtp}
                     isLoading={registrationState.isLoading}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="register-success"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                >
+                  <AuthSuccess
+                    type="register"
+                    userName={registrationState.name}
+                    userEmail={registrationState.email}
+                    onRedirect={handleRedirect}
                   />
                 </motion.div>
               )}
