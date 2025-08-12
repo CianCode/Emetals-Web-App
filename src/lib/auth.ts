@@ -16,16 +16,23 @@ export const auth = betterAuth({
   plugins: [
     admin(),
     emailOTP({
+      overrideDefaultEmailVerification: true,
       sendVerificationOTP: async ({ email, otp, type }) => {
         // In production, integrate with your email service (SendGrid, Resend, etc.)
         // For development, log to console
         if (process.env.NODE_ENV === "development") {
-          console.log("=====================================");
-          console.log(`📧 Email OTP Verification`);
-          console.log(`Type: ${type}`);
-          console.log(`To: ${email}`);
-          console.log(`Code: ${otp}`);
-          console.log("=====================================");
+          if (type === "sign-in") {
+            // Send the OTP for sign-in
+          } else if (type === "email-verification") {
+            console.log("=====================================");
+            console.log(`📧 Email OTP Verification`);
+            console.log(`Type: ${type}`);
+            console.log(`To: ${email}`);
+            console.log(`Code: ${otp}`);
+            console.log("=====================================");
+          } else {
+            // Send the OTP for password reset
+          }
         } else {
           // Production email sending logic
           // Example with Resend:
